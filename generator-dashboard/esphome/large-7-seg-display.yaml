@@ -1,0 +1,137 @@
+# Board: Adafruit ESP32 Feather
+# Definition: definitions/boards/featheresp32/manifest.yaml
+
+esphome:
+  name: large-7-seg-display
+  friendly_name: Large 7-seg display
+
+  on_boot:
+    priority: -100
+    then:
+      - text.set:
+          id: display_text
+          value: ""
+
+esp32:
+  variant: esp32
+
+logger:
+
+api:
+  encryption:
+    key: !secret large_7_seg_api_key
+
+ota:
+  - platform: esphome
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: Large 7-seg dis Fallback Hotspot
+    password: !secret large_7_seg_fallback_password
+
+captive_portal:
+
+# Define the display pins cleanly as standard GPIO outputs
+output:
+  - platform: gpio
+    pin: 13
+    id: out_clk
+  - platform: gpio
+    pin: 12
+    id: out_lat
+  - platform: gpio
+    pin: 14
+    id: out_ser
+
+text:
+  - platform: template
+    name: "Display Text"
+    id: display_text
+    optimistic: true
+    min_length: 0
+    max_length: 6
+    set_action:
+      lambda: |-
+        std::string text = x;
+        // Three digit positions on each side of a fixed center decimal.
+        const auto dot = text.find('.');
+        if (dot != std::string::npos) {
+          std::string whole = text.substr(0, dot);
+          std::string fraction = text.substr(dot + 1);
+          if (whole.length() > 3 || fraction.length() > 3) {
+            text = "------";
+          } else {
+            while (whole.length() < 3) whole = " " + whole;
+            while (fraction.length() < 3) fraction += "0";
+            text = whole + fraction;
+          }
+        }
+
+        while (text.length() < 6) {
+          text = " " + text;
+        }
+        if (text.length() > 6) {
+          text = text.substr(0, 6);
+        }
+
+        // Pull Latch Low
+        id(out_lat).turn_off();
+        delayMicroseconds(25);
+
+        // Shift data from right to left
+        for (int i = 5; i >= 0; i--) {
+          char c = toupper(text[i]);
+          uint8_t pattern = 0b00000000;
+
+          switch (c) {
+            case '0': pattern = 0b01111011; break;
+            case '1': pattern = 0b01100000; break;
+            case '2': pattern = 0b01011101; break;
+            case '3': pattern = 0b01110101; break;
+            case '4': pattern = 0b01100110; break;
+            case '5': pattern = 0b00110111; break;
+            case '6': pattern = 0b00111111; break;
+            case '7': pattern = 0b01100001; break;
+            case '8': pattern = 0b01111111; break;
+            case '9': pattern = 0b01110111; break;
+            case 'A': pattern = 0b01101111; break;
+            case 'B': pattern = 0b00111110; break;
+            case 'C': pattern = 0b00011011; break;
+            case 'D': pattern = 0b01111100; break;
+            case 'E': pattern = 0b00011111; break;
+            case 'F': pattern = 0b00001111; break;
+            case 'H': pattern = 0b01101110; break;
+            case 'L': pattern = 0b00011010; break;
+            case 'P': pattern = 0b01001111; break;
+            case 'U': pattern = 0b01111010; break;
+            case 'O': pattern = 0b01111011; break;
+            case '-': pattern = 0b00000100; break;
+            default:  pattern = 0b00000000; break;
+          }
+
+          // Decimal is always lit after the third digit from the left.
+          if (i == 2) pattern |= 0b10000000;
+
+          for (int b = 0; b < 8; b++)  {
+            if ((pattern & (1 << (7 - b)))) {
+              id(out_ser).turn_on();
+            } else {
+              id(out_ser).turn_off();
+            }
+            delayMicroseconds(25);
+
+            id(out_clk).turn_on();
+            delayMicroseconds(25);
+
+            id(out_clk).turn_off();
+            delayMicroseconds(25);
+          }
+        }
+
+        // Push Latch High
+        id(out_lat).turn_on();
+        delayMicroseconds(25);
+        id(out_lat).turn_off();
+    mode: TEXT

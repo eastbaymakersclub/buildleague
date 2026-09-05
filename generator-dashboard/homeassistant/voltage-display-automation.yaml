@@ -1,0 +1,23 @@
+# Installed as an entry in Home Assistant's automations.yaml.
+id: voltage_reader_large_display
+alias: Voltage Reader to Large 7-seg Display
+description: Show live volts with two decimal places; dashes when the reader disconnects.
+triggers:
+  - trigger: state
+    entity_id:
+      - sensor.voltage_reader_input_voltage
+  - trigger: state
+    entity_id: text.large_7_seg_display_display_text
+    from: unavailable
+  - trigger: homeassistant
+    event: start
+conditions: []
+actions:
+  - action: text.set_value
+    target:
+      entity_id: text.large_7_seg_display_display_text
+    data:
+      value: >-
+        {% set v = states('sensor.voltage_reader_input_voltage') %}
+        {{ ('%.2f' | format(v | float)) if is_number(v) else '------' }}
+mode: restart

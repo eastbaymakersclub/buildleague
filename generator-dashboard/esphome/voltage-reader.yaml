@@ -1,0 +1,39 @@
+# HUZZAH32: signal positive to A2/GPIO34, signal ground to GND.
+# Direct DC only: keep the pin within 0–3.3 V; useful range ~0.1–3.1 V.
+esphome:
+  name: voltage-reader
+  friendly_name: Voltage Reader
+
+esp32:
+  board: featheresp32
+  framework:
+    type: esp-idf
+
+packages:
+  common: !include common/common.yaml
+
+logger:
+  level: INFO
+
+api:
+  batch_delay: 0ms
+  reboot_timeout: 0s
+
+sensor:
+  - platform: adc
+    pin: GPIO34
+    id: input_voltage
+    name: Input Voltage
+    attenuation: auto
+    update_interval: 1ms
+    accuracy_decimals: 2
+    filters:
+      - sliding_window_moving_average:
+          window_size: 200
+          send_every: 200
+          send_first_at: 200
+      - round: 2
+
+button:
+  - platform: restart
+    name: Restart
