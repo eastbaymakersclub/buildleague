@@ -4,6 +4,10 @@ A local live voltage graph and team-trial dashboard for the tiny-generator blade
 competition. It connects directly to the existing ESPHome Voltage Reader over its
 encrypted Wi-Fi API. Home Assistant and the large display continue working.
 
+![Blade Lab comparing voltage traces from two saved team attempts](docs/blade-lab.png)
+
+Compare saved attempts on the fixed 0–1.2 V scale, even while the generator is disconnected.
+
 ## First-time setup
 
 Follow the repository [setup instructions](../README.md#quick-start) to install
